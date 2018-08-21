@@ -1,0 +1,145 @@
+#首先有使用这些工具处理数据的经验，其次就是熟悉程度的问题，然后再是基础技术原理的了解，然后再是基本算法的深入研究
+from pyltp import Segmentor
+
+##########################分词模块#########################
+model_path = "ltp_data_v3.4.0/cws.model"
+
+segmentor = Segmentor()
+segmentor.load(model_path)
+
+str_test = "#首先有使用这些工具处理数据的经验，其次就是熟悉程度的问题，然后再是基础技术原理的了解，然后再是基本算法的深入研究"
+str_seged = segmentor.segment(str_test)   #<pyltp.VectorOfString object at 0x7f7774489510>
+#print(str_seged)
+str_temp = " ".join(str_seged)
+print(str_temp)
+
+###########输出
+# 首先 有 使用 这些 工具 处理 数据 的 经验 ， 其次 就 是 熟悉 程度 的 问题 ， 然后 再 是 基础 技术 原理 的 了解 ， 然后 再 是 基本 算法 的 深入 研究
+
+#加载自定义词典的方式（由输出可以发现，不是自定义的词典的词汇都会被解析？？？）
+user_dict_path = "fulluserdict.txt"  #用户词典 ，原本模型是没有带的
+segmentor_user = Segmentor()
+segmentor_user.load_with_lexicon(model_path,user_dict_path)
+str_seged = segmentor_user.segment(str_test)   #<pyltp.VectorOfString object at 0x7f7774489510>
+#print(str_seged)
+str_temp = " ".join(str_seged)
+
+#"fulluserdict.txt"
+#然后再是
+#处理数据
+#熟悉程度的问题
+#首先有
+#基础技术原理
+#基础技术
+###########输出
+# 首先 有 使用 这些 工具 处理数据 的 经验 ， 其次 就 是 熟悉 程度 的 问题 ， 然后 再 是 基础技术 原理 的 了解 ， 然后 再 是 基本 算法 的 深入 研究
+
+
+#使用list将切割后的数据转化成列表形式
+print(list(str_seged))
+
+['#', '首先', '有', '使用', '这些', '工具', '处理数据', '的', '经验', '，', '其次', '就', '是', '熟悉', '程度', '的', '问题', '，', 
+'然后', '再', '是', '基础技术', '原理', '的', '了解', '，', '然后', '再', '是', '基本', '算法', '的', '深入', '研究']
+
+#####################词性标注模块#####################################
+from pyltp import Postagger
+postagger = Postagger()
+postagger_path = "ltp_data_v3.4.0/pos.model"
+postagger.load(postagger_path)
+
+words_list = list(str_seged)
+postags = postagger.postag(words_list)  #<pyltp.VectorOfString object at 0x7f7774489870>
+
+print(list(postags))
+
+##############输出
+['wp', 'd', 'v', 'v', 'r', 'n', 'n', 'u', 'n', 'wp', 'c', 'd', 'v', 'v', 'n', 'u', 'n', 'wp', 'c', 'd', 'v', 'n', 'n', 'u', 'v', 'wp', 'c', 'd', 'v', 'a', 'n', 'u', 'a', 'v']
+
+sentence_word_postag = ""
+for word,postag in zip(words_list,postags):
+    sentence_word_postag+= word+"|"+postag+" "
+print(sentence_word_postag)
+
+###############输出
+#|wp 首先|d 有|v 使用|v 这些|r 工具|n 处理数据|n 的|u 经验|n ，|wp 其次|c 就|d 是|v 熟悉|v 程度|n 的|u 问题|n ，|wp 然后|c 再|d 是|v 基础技术|n 原理|n 的|u 了解|v ，|wp 然后|c 再|d 是|v 基本|a 算法|n 的|u 深入|a 研究|v 
+
+###################################命名实体模块
+from pyltp import NamedEntityRecognizer
+
+recognizer = NamedEntityRecognizer()
+
+recognizer_path = "ltp_data_v3.4.0/ner.model"
+recognizer.load(recognizer_path)
+
+netags = recognizer.recognize(words_list,postags)
+print(netags)
+
+sentence_word_postag_netag = ""
+for word,postag,netag in zip(words_list,postags,netags):
+    sentence_word_postag_netag += word + "|" + postag + "|" + netag + " "
+print(sentence_word_postag_netag)
+
+#O代表的是非专有名词
+
+#############################句法解析模块
+import nltk
+from nltk.tree import Tree
+from nltk.grammar import DependencyGrammar
+from nltk.parse import *
+from pyltp import Parser
+parser = Parser()
+parser_path = "ltp_data_v3.4.0/parser.model"
+parser.load(parser_path)
+
+arcs = parser.parse(words_list,postags)
+arcs_length = len(arcs)
+print(arcs_length)
+conll = ""
+for i in range(arcs_length):
+    if arcs[i].head == 0:
+        arcs[i].relation = "ROOT"
+    conll += "\t" + words_list[i]+ "("+postags[i]+")"+"\t"+postags[i]+"\t"+str(arcs[i].head)+"\t"+arcs[i].relation+"\n"
+print (conll)
+
+##########输出
+
+#(wp)	wp	3	WP
+	首先(d)	d	3	ADV
+	有(v)	v	0	ROOT
+	使用(v)	v	9	ATT
+	这些(r)	r	6	ATT
+	工具(n)	n	7	ATT
+	处理数据(n)	n	4	VOB
+	的(u)	u	4	RAD
+	经验(n)	n	3	VOB
+	，(wp)	wp	3	WP
+	其次(c)	c	13	ADV
+	就(d)	d	13	ADV
+	是(v)	v	3	COO
+	熟悉(v)	v	17	ATT
+	程度(n)	n	14	VOB
+	的(u)	u	14	RAD
+	问题(n)	n	13	VOB
+	，(wp)	wp	13	WP
+	然后(c)	c	21	ADV
+	再(d)	d	21	ADV
+	是(v)	v	13	COO
+	基础技术(n)	n	23	ATT
+	原理(n)	n	25	ATT
+	的(u)	u	23	RAD
+	了解(v)	v	21	VOB
+	，(wp)	wp	21	WP
+	然后(c)	c	29	ADV
+	再(d)	d	29	ADV
+	是(v)	v	21	COO
+	基本(a)	a	31	ATT
+	算法(n)	n	34	ATT
+	的(u)	u	31	RAD
+	深入(a)	a	34	ADV
+	研究(v)	v	29	VOB
+
+#将树给绘制出来，但是提示ImportError: No module named '_tkinter', please install the python3-tk package
+#虽然已经安装好了 python3-tk package 还是没有效果，可能是在服务器中的问题？是因为在docker中运行的问题
+# conll_tree = DependencyGraph(conll)
+# tree = conll_tree.tree()
+# tree.draw()
